@@ -36,21 +36,25 @@ BitirimSpawn.Config = {
 
     ---------------------------------------------------------------------------
     -- CINEMATIC CAMERA
-    -- A slow drifting shot while the player chooses. Tune coords/lookAt to
+    -- A slow drifting shot while the player chooses. Tune `coords` to
     -- frame whatever view you want behind the cards.
     ---------------------------------------------------------------------------
     camera = {
-        coords = vec3(-1295.0, 288.0, 78.0),        -- where the camera sits
-        lookAt = vec3(-1279.62, 305.4, 66.0),       -- what it points at
+        -- Position + heading, exactly as captured in-game (x, y, z, heading).
+        -- The shot reproduces what you saw standing at this spot facing that
+        -- heading, so you can re-frame it just by pasting new coords here.
+        coords = vec4(-1377.49, 214.73, 84.9, 334.49),
+
+        pitch = 0.0,            -- tilt in degrees; negative looks downward
         fov = 45.0,
 
-        -- Gentle orbit so the shot never feels static. 0 disables the drift.
-        driftSpeed = 0.35,      -- degrees per second
-        driftRadius = 4.0,      -- metres of horizontal sway
+        -- Gentle yaw sway so the shot breathes. 0 disables the drift.
+        driftSpeed = 0.35,      -- sway speed
+        driftAmount = 2.5,      -- degrees of sway either side of the heading
 
         -- The engine streams the world around the PLAYER, not the camera, so
-        -- we move the streaming focus to the shot and wait for it to load.
-        -- Raise this if the scenery still looks flat/untextured on slow disks.
+        -- we park the hidden ped at the shot and move the streaming focus
+        -- there. Raise this if the scenery still looks flat on slow disks.
         streamWait = 1500,      -- ms
     },
 

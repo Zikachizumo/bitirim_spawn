@@ -82,24 +82,25 @@ end
 
 local function startCamera()
     local c = Cfg.camera
+    local pitch = c.pitch or 0.0
+
+    -- Placed at the captured position and turned to the captured heading, so
+    -- the shot matches exactly what you framed in-game. Rotation order 2 is
+    -- the standard ZXY order the game uses for headings.
     previewCam = CreateCamWithParams('DEFAULT_SCRIPTED_CAMERA',
-        c.coords.x, c.coords.y, c.coords.z, 0.0, 0.0, 0.0, c.fov, false, 0)
-    PointCamAtCoord(previewCam, c.lookAt.x, c.lookAt.y, c.lookAt.z)
+        c.coords.x, c.coords.y, c.coords.z,
+        pitch, 0.0, c.coords.w, c.fov, false, 2)
     SetCamActive(previewCam, true)
     RenderScriptCams(true, false, 0, true, true)
 
-    -- Slow orbit so the shot breathes instead of sitting dead still.
+    -- Slow yaw sway so the shot breathes instead of sitting dead still.
     if (c.driftSpeed or 0) > 0 then
         CreateThread(function()
-            local angle = 0.0
+            local t = 0.0
             while DoesCamExist(previewCam) and isOpen do
-                angle = (angle + c.driftSpeed * 0.016) % 360.0
-                local rad = math.rad(angle)
-                SetCamCoord(previewCam,
-                    c.coords.x + math.cos(rad) * c.driftRadius,
-                    c.coords.y + math.sin(rad) * c.driftRadius,
-                    c.coords.z)
-                PointCamAtCoord(previewCam, c.lookAt.x, c.lookAt.y, c.lookAt.z)
+                t = t + 0.016
+                local yaw = c.coords.w + math.sin(t * c.driftSpeed) * (c.driftAmount or 2.0)
+                SetCamRot(previewCam, pitch, 0.0, yaw, 2)
                 Wait(16)
             end
         end)
@@ -243,14 +244,14 @@ RegisterNetEvent('qb-spawn:client:setupSpawns', function()
     -- alone was not enough, so park the (hidden) ped at the shot as well —
     -- leaving it behind is why the scenery rendered flat and untextured.
     local cam = Cfg.camera
-    SetEntityCoords(cache.ped, cam.lookAt.x, cam.lookAt.y, cam.lookAt.z, false, false, false, false)
+    SetEntityCoords(cache.ped, cam.coords.x, cam.coords.y, cam.coords.z, false, false, false, false)
     FreezeEntityPosition(cache.ped, true)
     SetEntityVisible(cache.ped, false, false)
     DisplayRadar(false)
     setHudVisible(false)
 
     startCamera()
-    SetFocusPosAndVel(cam.lookAt.x, cam.lookAt.y, cam.lookAt.z, 0.0, 0.0, 0.0)
+    SetFocusPosAndVel(cam.coords.x, cam.coords.y, cam.coords.z, 0.0, 0.0, 0.0)
     Wait(cam.streamWait or 1500)
 
     ShutdownLoadingScreen()
