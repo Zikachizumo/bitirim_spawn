@@ -47,6 +47,11 @@ BitirimSpawn.Config = {
         -- Gentle orbit so the shot never feels static. 0 disables the drift.
         driftSpeed = 0.35,      -- degrees per second
         driftRadius = 4.0,      -- metres of horizontal sway
+
+        -- The engine streams the world around the PLAYER, not the camera, so
+        -- we move the streaming focus to the shot and wait for it to load.
+        -- Raise this if the scenery still looks flat/untextured on slow disks.
+        streamWait = 1500,      -- ms
     },
 
     ---------------------------------------------------------------------------

@@ -109,6 +109,9 @@ local function doSpawn(index)
     TriggerServerEvent('QBCore:Server:OnPlayerLoaded')
     TriggerEvent('QBCore:Client:OnPlayerLoaded')
 
+    -- Hand streaming back to the player before we move them.
+    ClearFocus()
+
     FreezeEntityPosition(cache.ped, false)
     DisplayRadar(true)
     setHudVisible(true)
@@ -119,7 +122,20 @@ local function doSpawn(index)
     else
         SetEntityCoords(cache.ped, spawnData.x, spawnData.y, spawnData.z, false, false, false, false)
         SetEntityHeading(cache.ped, spawnData.w or 0.0)
+
+        -- Wait for ground collision so the player can't fall through the map.
+        local deadline = GetGameTimer() + 5000
+        RequestCollisionAtCoord(spawnData.x, spawnData.y, spawnData.z)
+        while not HasCollisionLoadedAroundEntity(cache.ped) and GetGameTimer() < deadline do
+            RequestCollisionAtCoord(spawnData.x, spawnData.y, spawnData.z)
+            Wait(0)
+        end
     end
+
+    -- The ped was hidden for the selection shot — make it visible again.
+    -- Missing this leaves every player invisible to everyone, including
+    -- themselves, since each client hides its own networked ped.
+    SetEntityVisible(cache.ped, true, false)
 
     stopCamera()
     Wait(200)
@@ -171,7 +187,13 @@ RegisterNetEvent('qb-spawn:client:setupSpawns', function()
 
     startCamera()
 
-    Wait(300)
+    -- The engine streams around the ped, not the camera. Without moving the
+    -- streaming focus the scenery behind the cards never loads and renders as
+    -- flat, untextured geometry.
+    local cam = Cfg.camera
+    SetFocusPosAndVel(cam.lookAt.x, cam.lookAt.y, cam.lookAt.z, 0.0, 0.0, 0.0)
+    Wait(cam.streamWait or 1500)
+
     ShutdownLoadingScreen()
     ShutdownLoadingScreenNui()
     DoScreenFadeIn(Cfg.fadeIn)
@@ -188,6 +210,7 @@ AddEventHandler('onResourceStop', function(res)
     if res ~= GetCurrentResourceName() then return end
     if isOpen then
         SetNuiFocus(false, false)
+        ClearFocus()
         stopCamera()
         FreezeEntityPosition(cache.ped, false)
         SetEntityVisible(cache.ped, true, false)
