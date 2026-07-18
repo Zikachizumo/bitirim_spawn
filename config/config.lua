@@ -43,7 +43,7 @@ BitirimSpawn.Config = {
         -- Position + heading, exactly as captured in-game (x, y, z, heading).
         -- The shot reproduces what you saw standing at this spot facing that
         -- heading, so you can re-frame it just by pasting new coords here.
-        coords = vec4(-1377.49, 214.73, 84.9, 334.49),
+        coords = vec4(-1377.1, 212.45, 82.69, 338.47),
 
         pitch = 0.0,            -- tilt in degrees; negative looks downward
         fov = 45.0,
