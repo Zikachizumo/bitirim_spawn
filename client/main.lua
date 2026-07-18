@@ -112,6 +112,15 @@ local function doSpawn(index)
     -- Hand streaming back to the player before we move them.
     ClearFocus()
 
+    -- qbx_core puts the player in a solo tutorial session for the character
+    -- screen, which network-isolates them: other players' peds stop rendering
+    -- even though they still show up in GetActivePlayers (hence the floating
+    -- names and G prompt with no body). Leaving it is what makes players
+    -- visible to each other again.
+    if NetworkIsInTutorialSession() then
+        NetworkEndTutorialSession()
+    end
+
     FreezeEntityPosition(cache.ped, false)
     DisplayRadar(true)
     setHudVisible(true)
@@ -179,18 +188,17 @@ RegisterNetEvent('qb-spawn:client:setupSpawns', function()
         end
     end
 
-    -- Park the player out of sight while they choose.
+    -- The engine streams the world around the PED. Moving the streaming focus
+    -- alone was not enough, so park the (hidden) ped at the shot as well —
+    -- leaving it behind is why the scenery rendered flat and untextured.
+    local cam = Cfg.camera
+    SetEntityCoords(cache.ped, cam.lookAt.x, cam.lookAt.y, cam.lookAt.z, false, false, false, false)
     FreezeEntityPosition(cache.ped, true)
     SetEntityVisible(cache.ped, false, false)
     DisplayRadar(false)
     setHudVisible(false)
 
     startCamera()
-
-    -- The engine streams around the ped, not the camera. Without moving the
-    -- streaming focus the scenery behind the cards never loads and renders as
-    -- flat, untextured geometry.
-    local cam = Cfg.camera
     SetFocusPosAndVel(cam.lookAt.x, cam.lookAt.y, cam.lookAt.z, 0.0, 0.0, 0.0)
     Wait(cam.streamWait or 1500)
 
