@@ -15,7 +15,58 @@
     difference.
 ]]
 
-local Cfg = BitirimSpawn.Config
+-- Load marker. If this line never shows up in F8 then the client script is not
+-- running at all — bad manifest, missing dependency, or config.lua failed.
+print('[bitirim_spawn] client script loading...')
+
+---------------------------------------------------------------------------
+-- DIAGNOSTICS (registered FIRST, so a fault further down can't hide them)
+---------------------------------------------------------------------------
+
+--- /bx_spawnstate — dump the local player's render/network state and that of
+--- every nearby player. Run it in F8 after spawning.
+RegisterCommand('bx_spawnstate', function()
+    local ped = PlayerPedId()
+    local coords = GetEntityCoords(ped)
+    print('===== bitirim_spawn state =====')
+    print(('self visible      : %s'):format(tostring(IsEntityVisible(ped))))
+    print(('tutorial session  : %s'):format(tostring(NetworkIsInTutorialSession())))
+    print(('coords            : %.2f %.2f %.2f'):format(coords.x, coords.y, coords.z))
+    print(('model             : %s'):format(tostring(GetEntityModel(ped))))
+    print(('collision loaded  : %s'):format(tostring(HasCollisionLoadedAroundEntity(ped))))
+
+    local players = GetActivePlayers()
+    print(('nearby players    : %d'):format(#players - 1))
+    for i = 1, #players do
+        local other = GetPlayerPed(players[i])
+        if other ~= ped and DoesEntityExist(other) then
+            print(('  serverId=%s ped=%s visible=%s dist=%.1f'):format(
+                GetPlayerServerId(players[i]), other,
+                tostring(IsEntityVisible(other)),
+                #(coords - GetEntityCoords(other))))
+        end
+    end
+    print('===============================')
+end, false)
+
+--- /bx_fixvis — apply the repair by hand. If this makes everyone visible the
+--- fix is right and only its timing is wrong; if not, the cause is elsewhere.
+RegisterCommand('bx_fixvis', function()
+    local ped = PlayerPedId()
+    SetEntityVisible(ped, true, false)
+    if NetworkIsInTutorialSession() then NetworkEndTutorialSession() end
+    ClearFocus()
+    FreezeEntityPosition(ped, false)
+    print('[bitirim_spawn] forced visible + left tutorial session + cleared focus')
+end, false)
+
+---------------------------------------------------------------------------
+
+local Cfg = BitirimSpawn and BitirimSpawn.Config
+if not Cfg then
+    print('[bitirim_spawn] FATAL: config did not load (BitirimSpawn is nil)')
+    return
+end
 
 local spawns = {}
 local previewCam
@@ -212,50 +263,6 @@ end)
 
 -- qbx_core fires this alongside setupSpawns; stock qbx_spawn ignores it too.
 RegisterNetEvent('qb-spawn:client:openUI', function() end)
-
----------------------------------------------------------------------------
--- DIAGNOSTICS
--- Always registered: these are read-only (plus one manual repair) and exist
--- to tell us WHY a player is invisible instead of guessing at it.
----------------------------------------------------------------------------
-
---- /bx_spawnstate — dump the local player's render/network state and that of
---- every nearby player. Run it in F8 after spawning.
-RegisterCommand('bx_spawnstate', function()
-    local ped = cache.ped
-    local coords = GetEntityCoords(ped)
-    print('===== bitirim_spawn state =====')
-    print(('self visible      : %s'):format(tostring(IsEntityVisible(ped))))
-    print(('tutorial session  : %s'):format(tostring(NetworkIsInTutorialSession())))
-    print(('coords            : %.2f %.2f %.2f'):format(coords.x, coords.y, coords.z))
-    print(('model             : %s'):format(tostring(GetEntityModel(ped))))
-    print(('collision loaded  : %s'):format(tostring(HasCollisionLoadedAroundEntity(ped))))
-    print(('frozen            : %s'):format(tostring(IsEntityPositionFrozen(ped))))
-
-    local players = GetActivePlayers()
-    print(('nearby players    : %d'):format(#players - 1))
-    for i = 1, #players do
-        local other = GetPlayerPed(players[i])
-        if other ~= ped and DoesEntityExist(other) then
-            print(('  serverId=%s ped=%s visible=%s dist=%.1f'):format(
-                GetPlayerServerId(players[i]), other,
-                tostring(IsEntityVisible(other)),
-                #(coords - GetEntityCoords(other))))
-        end
-    end
-    print('===============================')
-end, false)
-
---- /bx_fixvis — manually apply the repair. If this makes everyone visible,
---- the fix is correct and only its timing/placement is wrong. If it does not,
---- the cause lies somewhere else entirely.
-RegisterCommand('bx_fixvis', function()
-    SetEntityVisible(cache.ped, true, false)
-    if NetworkIsInTutorialSession() then NetworkEndTutorialSession() end
-    ClearFocus()
-    FreezeEntityPosition(cache.ped, false)
-    print('[bitirim_spawn] forced visible + left tutorial session + cleared focus')
-end, false)
 
 -- Safety: never leave the player stuck with a locked cursor.
 AddEventHandler('onResourceStop', function(res)
